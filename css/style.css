@@ -1,0 +1,85 @@
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:#0d1210;
+  color:#eafbe6;
+  font-family:'Nunito','Trebuchet MS',system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;
+}
+#wrap{
+  position:relative;
+  width:min(100vw, calc(100vh * 1.6));
+  height:min(100vh, calc(100vw / 1.6));
+  overflow:hidden;background:#111;
+  box-shadow:0 0 70px rgba(0,0,0,.85);
+  font-size:min(1.62vw, calc(100vh/61.5));
+}
+canvas{display:block;width:100%;height:100%}
+
+/* ---------- оверлеи ---------- */
+.overlay{
+  position:absolute;inset:0;z-index:5;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:.7em;padding:1.6em 2.4em;
+  background:radial-gradient(ellipse at 50% 32%, rgba(32,66,28,.95), rgba(5,10,7,.98));
+}
+.overlay.hidden{display:none}
+.overlay h1{
+  font-size:3.2em;line-height:1;font-weight:900;letter-spacing:-.02em;
+  color:#ffd93d;text-shadow:0 .07em 0 #7a3b0d, 0 .15em .3em rgba(0,0,0,.65);
+}
+.overlay h2{font-size:2.5em;font-weight:900;color:#ffd93d;text-shadow:0 .06em 0 #7a3b0d}
+.lead{font-size:1.2em;line-height:1.5;max-width:36em}
+.hl{color:#ffd93d}
+
+.keys{display:flex;gap:.6em;flex-wrap:wrap;justify-content:center}
+.keycard{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+  border-radius:.6em;padding:.5em .8em;font-size:.95em;min-width:10em
+}
+.keycard b{display:block;color:#8fe36b;font-size:1.05em}
+
+.rules{display:grid;grid-template-columns:repeat(4,1fr);gap:.6em;max-width:56em;margin:.2em 0}
+.rules div{
+  background:rgba(0,0,0,.3);border:1px solid rgba(143,227,107,.18);
+  border-radius:.7em;padding:.7em .6em;font-size:.9em;line-height:1.35;opacity:.95
+}
+.rules b{color:#ffd93d}
+.rules .ic{font-size:1.8em;display:block;margin-bottom:.15em}
+
+.btn{
+  margin-top:.4em;cursor:pointer;border:none;border-radius:.7em;
+  background:linear-gradient(#ffd93d,#f0a81c);color:#3a2404;
+  font-family:inherit;font-weight:900;font-size:1.5em;padding:.5em 1.6em;
+  box-shadow:0 .2em 0 #a86a0a, 0 .4em .8em rgba(0,0,0,.5);
+  transition:transform .08s
+}
+.btn:active{transform:translateY(.12em)}
+.btn.small{font-size:1.05em;background:linear-gradient(#8fe36b,#4f9b32);color:#0f2409;box-shadow:0 .18em 0 #2f6a1c}
+.row{display:flex;gap:.8em;flex-wrap:wrap;justify-content:center;align-items:center}
+
+.stats{display:flex;gap:.7em;flex-wrap:wrap;justify-content:center;font-size:1em;margin:.2em 0}
+.stats div{background:rgba(0,0,0,.32);border-radius:.5em;padding:.45em .9em;min-width:8.5em}
+.stats b{display:block;color:#ffd93d;font-size:1.5em;line-height:1.1}
+.rank{font-size:1.35em;font-weight:900;color:#8fe36b;max-width:30em;line-height:1.35}
+.fine{font-size:.85em;opacity:.55;max-width:34em}
+
+/* ---------- сенсорное управление ---------- */
+#touch{position:absolute;inset:0;z-index:4;display:none;pointer-events:none}
+#touch.on{display:block}
+.pad{position:absolute;left:1em;bottom:1em;pointer-events:auto;
+  display:grid;grid-template-columns:repeat(3,3.2em);grid-template-rows:repeat(3,3.2em);gap:.15em}
+.pad button,.act button{
+  -webkit-tap-highlight-color:transparent;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+  color:#fff;border-radius:.6em;font-size:1.15em;font-weight:900;font-family:inherit
+}
+.pad button:active,.act button:active{background:rgba(255,217,61,.65);color:#222}
+.act{position:absolute;right:1em;bottom:1em;display:flex;gap:.6em;pointer-events:auto}
+.act button{width:4.6em;height:4.6em;border-radius:50%;font-size:.95em;line-height:1.15}
+
+@media (max-width:700px){
+  .rules{grid-template-columns:repeat(2,1fr)}
+  .overlay h1{font-size:2.6em}
+}

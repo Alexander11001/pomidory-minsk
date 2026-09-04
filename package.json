@@ -1,0 +1,10 @@
+{
+  "name": "pomidory-minsk",
+  "version": "1.0.0",
+  "description": "Браузерная аркада: огородник под Минском, жижа, фитофтора и градус",
+  "scripts": {
+    "start": "npx serve . -p 3000",
+    "deploy": "npx wrangler pages deploy . --project-name=pomidory-minsk"
+  },
+  "license": "MIT"
+}

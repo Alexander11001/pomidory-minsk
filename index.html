@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>🍅 Помидоры под Минском — симулятор огородника</title>
+<meta name="description" content="Аркада: парник под Минском. Поливай помидоры жижей, бей фитофтору купоросом, следи за градусом в организме и сдай ящик спелых помидоров за смену." />
+<meta property="og:title" content="🍅 Помидоры под Минском" />
+<meta property="og:description" content="Жара, жижа, фитофтора и водка. Сдай 20 спелых неповреждённых помидоров за смену." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <div id="touch">
+    <div class="pad">
+      <span></span><button data-k="ArrowUp">▲</button><span></span>
+      <button data-k="ArrowLeft">◀</button><span></span><button data-k="ArrowRight">▶</button>
+      <span></span><button data-k="ArrowDown">▼</button><span></span>
+    </div>
+    <div class="act">
+      <button data-k="KeyF">КУПО<br>РОС</button>
+      <button data-k="KeyE">ДЕЙ<br>СТВИЕ</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="menu">
+    <h1>🍅 ПОМИДОРЫ ПОД МИНСКОМ</h1>
+    <p class="lead">Ты — лысый колхозник чуть за 40, хозяин парника. Смена — <b>5 минут</b>.<br>
+      Сдать в ящик: <b id="goal-txt">20</b> спелых <u>неповреждённых</u> помидоров.</p>
+    <div class="keys">
+      <div class="keycard"><b>WASD / ←↑→↓</b>ходить по парнику</div>
+      <div class="keycard"><b>E</b>полить жижей · собрать · набрать · <span class="hl">выпить</span></div>
+      <div class="keycard"><b>F</b>опрыскать купоросом (куст + соседи)</div>
+      <div class="keycard"><b>M</b>звук вкл/выкл</div>
+    </div>
+    <div class="rules">
+      <div><span class="ic">💩</span><b>Жижа растит</b><br>но поднимает влажность в парнике</div>
+      <div><span class="ic">🦠</span><b>Влажность = фитофтора</b><br>лечится купоросом, запущенный куст гибнет</div>
+      <div><span class="ic">🪟</span><b>Форточки сушат и холодят</b><br>но с улицы задувает споры с картошки</div>
+      <div><span class="ic">🥃</span><b>Градус — это силы</b><br>упадёт до нуля — ноги встанут. Не забывай подливать</div>
+    </div>
+    <button class="btn" id="btn-play">🚜 Выйти в парник</button>
+    <p class="fine">Помидор перезреет и упадёт — считай, не было. Собранное носи в ящик, в руках больше пяти не унесёшь.</p>
+  </div>
+
+  <div class="overlay hidden" id="end">
+    <h2 id="end-title">Смена окончена</h2>
+    <div class="stats" id="end-stats"></div>
+    <p class="rank" id="end-rank"></p>
+    <div class="row">
+      <button class="btn" id="btn-again">↻ Ещё смена</button>
+      <button class="btn small" id="btn-menu">В меню</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/game.js"></script>
+<script src="js/draw.js"></script>
+</body>
+</html>
