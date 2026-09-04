@@ -27,6 +27,13 @@
       <button data-k="KeyF">КУПО<br>РОС</button>
       <button data-k="KeyE">ДЕЙ<br>СТВИЕ</button>
     </div>
+    <div class="inv-touch">
+      <button data-k="Digit1">1</button>
+      <button data-k="Digit2">2</button>
+      <button data-k="Digit3">3</button>
+      <button data-k="Digit4">4</button>
+      <button id="btn-pause-touch">⏸</button>
+    </div>
   </div>
 
   <div class="overlay" id="menu">
@@ -37,7 +44,8 @@
       <div class="keycard"><b>WASD / ←↑→↓</b>ходить по парнику</div>
       <div class="keycard"><b>E</b>полить жижей · собрать · набрать · <span class="hl">выпить</span></div>
       <div class="keycard"><b>F</b>опрыскать купоросом (куст + соседи)</div>
-      <div class="keycard"><b>M</b>звук вкл/выкл</div>
+      <div class="keycard"><b>1 – 4</b>пустить в дело находку из карманов</div>
+      <div class="keycard"><b>P / Esc</b>перекур (пауза) · <b>M</b> звук</div>
     </div>
     <div class="rules">
       <div><span class="ic">💩</span><b>Жижа растит</b><br>но поднимает влажность в парнике</div>
@@ -49,6 +57,21 @@
     </div>
     <button class="btn" id="btn-play">🚜 Выйти в парник</button>
     <p class="fine">В руках больше пяти помидоров не унесёшь. Петрович всё это время смотрит из-за стекла и комментирует. Зато своё, зато не магазинное.</p>
+  </div>
+
+  <div class="overlay hidden" id="pause">
+    <h2>🚬 Перекур</h2>
+    <p class="lead" id="pause-line">Помидоры без присмотра не разбегутся. Наверное.</p>
+    <div class="keys">
+      <div class="keycard"><b>1 – 4</b>пустить в дело находку из карманов</div>
+      <div class="keycard"><b>🪑 Табуретка</b>лечит артрит и радикулит</div>
+      <div class="keycard"><b>🐛 Колорад</b>собирается руками (E) или купоросом</div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btn-resume">▶ Дальше пахать</button>
+      <button class="btn small" id="btn-restart">↻ Заново</button>
+    </div>
+    <p class="fine">Пауза — <kbd>P</kbd> или <kbd>Esc</kbd></p>
   </div>
 
   <div class="overlay hidden" id="end">

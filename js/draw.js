@@ -206,6 +206,27 @@ function drawHen() {
   ctx.restore();
 }
 
+/* находки на полу */
+function drawDrops() {
+  for (const d of G.drops) {
+    const bob = Math.sin(d.t * 3) * 4;
+    const blink = d.life < 5 ? (Math.sin(d.t * 14) > 0 ? 0.35 : 1) : 1;
+    ctx.save();
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(d.x, d.y + 8, 14, 5, 0, 0, 7); ctx.fill();
+    ctx.globalAlpha = blink * (0.25 + Math.sin(d.t * 4) * 0.1);
+    ctx.fillStyle = '#ffd93d';
+    ctx.beginPath(); ctx.arc(d.x, d.y - 6 + bob, 20, 0, 7); ctx.fill();
+    ctx.globalAlpha = blink;
+    ctx.font = F(26);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(ITEMS[d.type].icon, d.x, d.y - 6 + bob);
+    ctx.restore();
+  }
+}
+
 /* колхозный реквизит по углам */
 function drawDecor() {
   /* покрышка с цветами */
@@ -347,6 +368,20 @@ function drawStations() {
         ctx.restore();
       }
       txt('НЗ', 0, 12, 13, '#ffd93d', 'center', 900);
+    } else if (s.id === 'stool') {
+      const p = G.p;
+      ctx.fillStyle = '#8a6a3f'; rr(-24, -12, 48, 10, 3); ctx.fill();
+      ctx.fillStyle = '#6d5230';
+      ctx.fillRect(-20, -2, 6, 22); ctx.fillRect(14, -2, 6, 22);
+      ctx.fillRect(-14, -2, 5, 18); ctx.fillRect(9, -2, 5, 18);
+      /* ватник брошен на табуретку */
+      ctx.fillStyle = '#5b6a3f';
+      ctx.beginPath(); ctx.ellipse(4, -16, 16, 7, -0.2, 0, 7); ctx.fill();
+      if (p.ail.arth || p.ail.radic > 0) {
+        const bl = 0.5 + Math.sin(G.t * 6) * 0.5;
+        txt('ПРИСЯДЬ', 0, -34, 12, 'rgba(255,' + Math.floor(150 + bl * 90) + ',90,1)', 'center', 900);
+      }
+      txt('табуретка', 0, 32, 11, '#c9d6c2', 'center', 700);
     } else if (s.id === 'crate') {
       ctx.fillStyle = '#8a6a3f'; rr(-40, -26, 80, 62, 6); ctx.fill();
       ctx.fillStyle = '#a07d4c'; rr(-40, -26, 80, 10, 4); ctx.fill();
@@ -434,6 +469,19 @@ function drawPlant(pl) {
     ctx.ellipse(L[0] + wob + sway * 0.2, L[1] + wob * 0.4, L[2], L[3], L[4] + wob * 0.02, 0, 7);
     ctx.fill();
   }
+  /* мучнистая роса — белый налёт */
+  if (pl.mildew > 0.12) {
+    ctx.save();
+    ctx.globalAlpha = clamp(pl.mildew * 0.55, 0, 0.6);
+    ctx.fillStyle = '#f2f6ee';
+    for (let i = 0; i < 7; i++) {
+      const a = i * 0.9;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * 26, -28 + Math.sin(a) * 18, 9, 6, a, 0, 7);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
   /* пятна фитофторы */
   if (sick > 0.18) {
     ctx.fillStyle = 'rgba(45,32,12,.85)';
@@ -443,6 +491,23 @@ function drawPlant(pl) {
       ctx.beginPath();
       ctx.ellipse(Math.cos(a) * r * 1.6, -26 + Math.sin(a) * r * 0.8, 3 + (i % 3), 2.4 + (i % 3) * 0.7, a, 0, 7);
       ctx.fill();
+    }
+  }
+  /* колорадские жуки ползают по листве */
+  if (pl.beetles > 0.05) {
+    const n = 1 + Math.floor(pl.beetles * 4);
+    for (let i = 0; i < n; i++) {
+      const a = i * 1.7 + pl.sway * 0.4;
+      const bxp = Math.cos(a) * 26, byp = -28 + Math.sin(a * 1.3) * 16;
+      ctx.save();
+      ctx.translate(bxp, byp);
+      ctx.rotate(Math.sin(a) * 0.6);
+      ctx.fillStyle = '#e3c15a';
+      ctx.beginPath(); ctx.ellipse(0, 0, 5.5, 4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2f2716';
+      for (let s = -2; s <= 2; s++) ctx.fillRect(s * 2 - 0.5, -3.4, 1, 6.8);
+      ctx.beginPath(); ctx.arc(-5, 0, 2.2, 0, 7); ctx.fill();
+      ctx.restore();
     }
   }
   ctx.restore();
@@ -476,6 +541,13 @@ function drawPlant(pl) {
         ctx.fill();
       }
     }
+    /* вершинная гниль — чёрное донце */
+    if (f.blossom) {
+      ctx.fillStyle = 'rgba(28,20,10,.85)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + rad * 0.62, rad * 0.52, rad * 0.34, 0, 0, 7);
+      ctx.fill();
+    }
     ctx.fillStyle = '#3f7a26';
     ctx.beginPath(); ctx.ellipse(x, y - rad * 0.95, rad * 0.5, rad * 0.22, 0, 0, 7); ctx.fill();
   }
@@ -498,8 +570,10 @@ function drawPlant(pl) {
 
   /* значки состояния */
   let icon = '', ic = '#fff';
-  if (ripeCount(pl) > 0) { icon = pl.wait > 0 ? '⏳' : '🍅'; }
+  if (pl.beetles > 0.25) { icon = '🐛'; }
+  else if (ripeCount(pl) > 0) { icon = pl.wait > 0 ? '⏳' : '🍅'; }
   else if (pl.infect > 0.35) { icon = '🦠'; }
+  else if (pl.mildew > 0.4) { icon = '🌫️'; }
   else if (pl.moist < 0.18) { icon = '🥵'; }
   if (icon) {
     const by = -78 - Math.abs(Math.sin(G.t * 3)) * 5;
@@ -514,9 +588,11 @@ function drawPlant(pl) {
 /* --------------------------------------------------------- огородник */
 function drawFarmer() {
   const p = G.p;
+  const sitting = p.busyKind === 'rest';
   const bob = Math.sin(p.walk * 6) * ((p.vx || p.vy) ? 3 : 0);
-  const legA = Math.sin(p.walk * 6) * ((p.vx || p.vy) ? 0.9 : 0);
-  const bend = p.exhausted ? 0.35 : (p.busyKind === 'replant' ? 0.55 : 0);
+  const legA = sitting ? 0 : Math.sin(p.walk * 6) * ((p.vx || p.vy) ? 0.9 : 0);
+  const bend = p.exhausted ? 0.35 : (p.busyKind === 'replant' ? 0.55 : 0)
+             + (p.ail.radic > 0 && !sitting ? 0.22 : 0);
   const tilt = p.wobble > 0 ? Math.sin(G.t * 3.3) * 0.09 * p.wobble : 0;
   const hot = clamp((G.temp - 28) / 14, 0, 1);
 
@@ -529,10 +605,20 @@ function drawFarmer() {
 
   ctx.rotate(tilt);
   ctx.scale(p.face, 1);
-  ctx.translate(0, bob - 2);
+  ctx.translate(0, bob - 2 + (sitting ? 18 : 0));
 
   /* ноги: треники с лампасами + кирзачи */
-  for (const s of [-1, 1]) {
+  if (sitting) {
+    /* сидит: колени вперёд, сапоги на землю */
+    for (const s of [-1, 1]) {
+      ctx.save();
+      ctx.translate(s * 7, -34);
+      ctx.fillStyle = '#5c6470'; rr(-8, 0, 26, 15, 7); ctx.fill();
+      ctx.fillStyle = '#5c6470'; rr(10, 4, 14, 22, 6); ctx.fill();
+      ctx.fillStyle = '#2b241c'; rr(8, 24, 20, 10, 4); ctx.fill();
+      ctx.restore();
+    }
+  } else for (const s of [-1, 1]) {
     ctx.save();
     ctx.translate(s * 8, -36);
     ctx.rotate(legA * s * 0.8);
@@ -868,6 +954,47 @@ function drawHUD() {
     shadowText(names[p.busyKind] || '', p.x, p.y - 150, 15, '#ffd93d', 'center', 900);
   }
 
+  /* инвентарь: четыре кармана */
+  const ix = 12, iy = H - 60;
+  txt('КАРМАНЫ', ix, iy - 12, 12, 'rgba(234,251,230,.6)', 'left', 900);
+  for (let i = 0; i < INV_SIZE; i++) {
+    const sx = ix + i * 50;
+    const type = p.inv[i];
+    ctx.fillStyle = type ? 'rgba(20,34,20,.85)' : 'rgba(10,16,12,.55)';
+    rr(sx, iy, 44, 44, 9); ctx.fill();
+    ctx.strokeStyle = type ? 'rgba(143,227,107,.8)' : 'rgba(255,255,255,.16)';
+    ctx.lineWidth = 2; rr(sx, iy, 44, 44, 9); ctx.stroke();
+    if (type) {
+      ctx.font = F(24);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(ITEMS[type].icon, sx + 22, iy + 23);
+    }
+    txt(String(i + 1), sx + 6, iy + 38, 11, type ? '#ffd93d' : 'rgba(255,255,255,.35)', 'left', 900);
+  }
+  /* что за предмет — подписью под карманами */
+  const firstItem = p.inv.find(Boolean);
+  if (firstItem) shadowText(ITEMS[firstItem].hint, ix, H - 6, 13, 'rgba(234,251,230,.75)', 'left', 700);
+
+  /* хвори */
+  let ax = W - 12;
+  const ails = [];
+  if (p.ail.arth) ails.push(['🦴 артрит — на табуретку', '#ff8a5c']);
+  if (p.ail.radic > 0) ails.push(['🌀 радикулит ' + Math.ceil(p.ail.radic) + 'с', '#ff8a5c']);
+  if (p.ail.burn > 0) ails.push(['🔥 изжога ' + Math.ceil(p.ail.burn) + 'с', '#ffb45c']);
+  if (p.gloves > 0) ails.push(['🧤 верхонки ' + Math.ceil(p.gloves) + 'с', '#8fe36b']);
+  let ay = 52;
+  for (const a of ails) {
+    ctx.font = F(14, 900);
+    const wq = ctx.measureText(a[0]).width + 18;
+    ctx.fillStyle = 'rgba(10,16,12,.8)'; rr(ax - wq, ay, wq, 24, 7); ctx.fill();
+    txt(a[0], ax - wq + 9, ay + 12, 14, a[1], 'left', 900);
+    ay += 28;
+  }
+  /* счётчик до следующего артрита */
+  shadowText('до передышки: ' + Math.max(0, p.nextArth - p.picked) + ' 🍅', W - 12, H - 14, 13,
+    'rgba(234,251,230,.6)', 'right', 700);
+
   /* тосты */
   let ty = 46;
   for (const t of G.toasts) {
@@ -903,6 +1030,7 @@ function render() {
     ents.push({ y: G.p.y + 4, f: drawFarmer });
     ents.push({ y: G.hen.y, f: drawHen });
     ents.sort((a, b) => a.y - b.y);
+    drawDrops();
     for (const e of ents) e.f();
     drawSporesAndParts();
     drawHeat();
@@ -919,6 +1047,7 @@ function frame(now) {
   last = now;
   if (dt > 0.06) dt = 0.06;
   if (G && G.phase === 'play') update(dt);
+  else if (G && G.phase === 'pause') clearPressed();      /* на паузе всё замирает */
   else if (G) { G.t += dt; updateParts(dt); for (const pl of G.plants) pl.sway += dt; clearPressed(); }
   render();
   requestAnimationFrame(frame);

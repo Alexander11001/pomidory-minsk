@@ -23,8 +23,21 @@ const FLOOR_TOP = 200, FLOOR_BOT = 566, FLOOR_L = 40, FLOOR_R = 926;
 
 const ACT = {          // длительности действий, сек
   water: 0.45, harvest: 0.35, barrel: 1.3, kupor: 1.8,
-  vodka: 1.0, crate: 0.5, replant: 1.5
+  vodka: 1.0, crate: 0.5, replant: 1.5, rest: 2.6, beetles: 0.8
 };
+
+const ARTHRITIS_EVERY = 10;   // помидоров до передышки
+const INV_SIZE = 4;
+
+/* ---------------- инвентарь: что можно найти ---------------- */
+const ITEMS = {
+  lucky:  { icon: '🍅', name: 'Удачный помидор', hint: 'В ящик пойдёт за три' },
+  chirik: { icon: '💵', name: 'Чирик', hint: 'Петрович сгоняет в сельпо' },
+  cuke:   { icon: '🥒', name: 'Солёный огурец', hint: 'Закусить: градус и от изжоги' },
+  balm:   { icon: '🧴', name: 'Растирка', hint: 'Снимает артрит и радикулит' },
+  gloves: { icon: '🧤', name: 'Верхонки', hint: '40 секунд рвёшь мгновенно' }
+};
+const FLOOR_ITEMS = ['cuke', 'balm', 'gloves', 'chirik'];
 
 document.getElementById('goal-txt').textContent = GOAL;
 
@@ -89,6 +102,7 @@ const STATIONS = [
   { id: 'barrel', x: 884, y: 258, r: 88, name: 'Бочка с жижей' },
   { id: 'kupor',  x: 884, y: 400, r: 82, name: 'Стол с купоросом' },
   { id: 'vodka',  x: 876, y: 524, r: 82, name: 'Ящик под столом' },
+  { id: 'stool',  x: 800, y: 320, r: 66, name: 'Табуретка' },
   { id: 'crate',  x: 66,  y: 378, r: 92, name: 'Ящик под урожай' },
   { id: 'vent',   x: 300, y: 182, r: 96, name: 'Форточка', idx: 0 },
   { id: 'vent',   x: 660, y: 182, r: 96, name: 'Форточка', idx: 1 }
@@ -150,6 +164,34 @@ const SAY = {
   drunk: [
     'Я трезв как стёклышко!', 'Грядка… она… вон там', 'Помидор, стой ровно!',
     'Эт-та не я шатаюсь, эт-та парник'
+  ],
+  arth: [
+    'Ой, руки-то… к дождю', 'Суставы крутит, зараза', 'Пальцы не разгибаются',
+    'Полсотни лет как не бывало… а руки помнят', 'Пять минут посижу — и снова в бой'
+  ],
+  radic: [
+    'Ой, спину прострелило!', 'Поясница, родимая…', 'Разогнуться бы',
+    'Вот тебе и рассада'
+  ],
+  burn: [
+    'Изжога, а закусить нечем', 'Печёт в груди — не то что в парнике',
+    'Огурчика бы солёного…'
+  ],
+  find: [
+    'О! Чирик в земле!', 'Гляди-ка, повезло', 'В хозяйстве всё сгодится',
+    'Не зря копал'
+  ],
+  lucky: [
+    'Вот это гигант! На выставку!', 'Кило потянет, не меньше',
+    'Такой один — уже полведра', 'Соседям покажу и не отдам'
+  ],
+  rest: [
+    'Пять минут — и как новый', 'Сидим, отдыхаем, трудодни идут',
+    'Перекур — дело святое'
+  ],
+  beetle: [
+    'Колорад, зараза полосатая!', 'Опять эти в тельняшках',
+    'Руками их, руками — надёжнее'
   ]
 };
 
@@ -167,6 +209,7 @@ function makePlant(x, y, i) {
   return {
     x, y, i, col: i % COLS.length, row: Math.floor(i / COLS.length),
     alive: true, growth: 0.05, moist: 0.55, infect: 0, immune: 0, wait: 0,
+    mildew: 0, beetles: 0, beetleT: rnd(20, 70), dryT: 0,
     fruits: [], spawnT: rnd(2, 7), sway: rnd(0, 6.3), pop: 0, hit: 0, deadT: 0
   };
 }
@@ -190,8 +233,14 @@ function newGame() {
       hands: 0, bucket: BUCKET_MAX, spray: SPRAY_MAX,
       busy: 0, busyMax: 0, busyKind: '', busyTarget: null,
       swig: 0, hic: 0, sweat: 0, spillT: 1,
-      say: { txt: '', life: 0 }, sayCd: 4
+      say: { txt: '', life: 0 }, sayCd: 4,
+      /* инвентарь и хвори */
+      inv: new Array(INV_SIZE).fill(null),
+      picked: 0, nextArth: ARTHRITIS_EVERY, drinksRow: 0, gloves: 0,
+      ail: { arth: false, radic: 0, burn: 0 }, sit: 0
     },
+    drops: [], dropCd: rnd(12, 22),
+    rests: 0, found: 0, luckies: 0,
     /* колхозная массовка */
     hen: { x: 420, y: 470, tx: 420, ty: 470, t: 0, peck: 0, face: 1, cd: rnd(4, 9), panic: 0 },
     goat: { t: 0, vent: 0, chew: 0 },
@@ -228,6 +277,7 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   Snd.wake();
   if (e.code === 'KeyM' && G) { Snd.on = !Snd.on; toast(Snd.on ? '🔊 Звук включён' : '🔇 Тишина', '#8fe36b'); }
+  if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -235,7 +285,7 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 if (matchMedia('(hover:none)').matches || 'ontouchstart' in window)
   document.getElementById('touch').classList.add('on');
 
-document.querySelectorAll('#touch button').forEach(b => {
+document.querySelectorAll('#touch button[data-k]').forEach(b => {
   const k = b.dataset.k;
   const down = e => { e.preventDefault(); if (!keys[k]) keys[k + '_p'] = true; keys[k] = true; Snd.wake(); };
   const up   = e => { e.preventDefault(); keys[k] = false; };
@@ -273,12 +323,14 @@ function actionLabel(tg) {
       case 'vodka':  return 'Поднять градус';
       case 'crate':  return p.hands > 0 ? 'Сдать ' + p.hands + ' шт.' : 'Ящик пустует';
       case 'vent':   return G.vents[tg.s.idx] ? 'Закрыть форточку' : 'Открыть форточку';
+      case 'stool':  return p.ail.arth || p.ail.radic > 0 ? 'Посидеть, передохнуть' : 'Присесть на минутку';
     }
   }
   const pl = tg.pl;
   if (!pl.alive) return 'Выдрать и посадить';
+  if (pl.beetles > 0.25) return 'Собрать колорадов';
   if (pl.wait > 0 && ripeCount(pl) > 0) return 'Срок ожидания ' + Math.ceil(pl.wait) + 'с';
-  if (ripeCount(pl) > 0) return 'Собрать помидоры';
+  if (ripeCount(pl) > 0) return p.ail.arth ? 'Рвать (руки крутит)' : 'Собрать помидоры';
   if (p.bucket > 0 && pl.moist < 0.85) return 'Полить жижей';
   if (pl.moist >= 0.85) return 'Земля мокрая';
   return 'Ведро пустое';
@@ -289,8 +341,12 @@ const ripeCount = pl => pl.fruits.reduce((n, f) => n + (f.t >= 1 ? 1 : 0), 0);
 /* ---------------- действия ---------------- */
 function startBusy(kind, dur, target) {
   const p = G.p;
+  let k = 1;
+  if (p.exhausted) k *= 1.9;
+  if (p.ail.arth && kind !== 'rest' && kind !== 'vodka') k *= 1.8;   /* артрит: всё медленнее */
+  if (p.gloves > 0 && (kind === 'harvest' || kind === 'beetles')) k *= 0.25;
   p.busyKind = kind;
-  p.busyMax = dur * (p.exhausted ? 1.9 : 1);
+  p.busyMax = dur * k;
   p.busy = p.busyMax;
   p.busyTarget = target || null;
 }
@@ -314,6 +370,8 @@ function interact() {
     } else if (s.id === 'crate') {
       if (p.hands <= 0) { toast('В руках пусто — иди собирай', '#c9d6c2'); return; }
       startBusy('crate', ACT.crate, s);
+    } else if (s.id === 'stool') {
+      startBusy('rest', ACT.rest, s);
     } else if (s.id === 'vent') {
       G.vents[s.idx] = !G.vents[s.idx];
       Snd.blip(G.vents[s.idx] ? 380 : 260, 0.12, 'square', 0.05, G.vents[s.idx] ? 520 : 180);
@@ -325,7 +383,9 @@ function interact() {
 
   const pl = tg.pl;
   if (!pl.alive) { startBusy('replant', ACT.replant, pl); Snd.dig(); return; }
+  if (pl.beetles > 0.25) { startBusy('beetles', ACT.beetles, pl); return; }
   if (ripeCount(pl) > 0) {
+    if (p.ail.arth) { toast('🦴 Руки свело — надо посидеть на табуретке', '#ffb45c'); Snd.bad(); say('arth', 0.6); }
     if (pl.wait > 0) { toast('Купорос не обсох — ' + Math.ceil(pl.wait) + ' сек нельзя трогать', '#7ec8ff'); Snd.bad(); return; }
     if (p.hands >= HANDS_MAX) { toast('Руки полные — неси в ящик!', '#ffb45c'); Snd.bad(); return; }
     startBusy('harvest', ACT.harvest, pl);
@@ -352,6 +412,12 @@ function finishBusy() {
     p.energy = clamp(p.energy + 55, 0, 130);
     G.drinks++;
     p.hic = 1.6; p.swig = 0.6;
+    p.drinksRow++;
+    if (p.drinksRow >= 3 && p.ail.burn <= 0) {
+      p.ail.burn = 22;
+      toast('🔥 Изжога — пил без закуски. Градус тает быстрее', '#ff8a5c');
+      say('burn');
+    }
     Snd.glug();
     popText(p.x, p.y - 96, 'Хорошо пошла!', '#ffd93d');
     say(p.energy > 100 ? 'drunk' : 'vodka');
@@ -379,16 +445,38 @@ function finishBusy() {
     say('water', 0.45);
   } else if (k === 'harvest') {
     const pl = tg;
-    let good = 0, brak = 0;
+    let good = 0, brak = 0, slip = 0;
+    const limit = p.ail.arth ? 2 : 99;             /* с артритом много не нарвёшь */
     for (let i = pl.fruits.length - 1; i >= 0; i--) {
       const f = pl.fruits[i];
       if (f.t < 1) continue;
-      if (p.hands + good >= HANDS_MAX) break;
+      if (p.hands + good >= HANDS_MAX || good + brak >= limit) break;
       pl.fruits.splice(i, 1);
       if (f.rot > 0.3) { brak++; G.spoiled++; }
-      else { good++; }
+      else if (p.ail.arth && Math.random() < 0.3) {  /* пальцы не держат */
+        slip++; G.lost++;
+        splash(pl.x, pl.y - 20, 10, '#d64027', 80);
+      } else good++;
     }
     p.hands += good;
+    if (slip) { popText(pl.x - 16, pl.y - 96, 'выронил!', '#ff8a5c'); Snd.bad(); }
+
+    /* удачный помидор — гигант на выставку */
+    if (good && Math.random() < 0.13 && invAdd('lucky')) {
+      G.luckies++;
+      popText(pl.x, pl.y - 108, '🍅 УДАЧНЫЙ!', '#ffd93d');
+      toast('🍅 Удачный помидор! В ящик пойдёт за три — жми цифру слота', '#ffd93d');
+      say('lucky'); Snd.win();
+    }
+
+    /* артрит: каждые ARTHRITIS_EVERY сорванных руки сводит */
+    p.picked += good;
+    if (p.picked >= p.nextArth && !p.ail.arth) {
+      p.nextArth = p.picked + ARTHRITIS_EVERY;
+      p.ail.arth = true;
+      toast('🦴 Артрит разыгрался — на табуретку, передохнуть!', '#ffb45c');
+      say('arth'); Snd.ouch(); G.shake = 0.4;
+    }
     pl.pop = 0.6;
     if (good) { Snd.pick_(); popText(pl.x, pl.y - 66, '+' + good + ' 🍅', '#8fe36b'); say('harvest', 0.55); }
     if (brak) { Snd.bad(); popText(pl.x + 14, pl.y - 86, 'брак ×' + brak, '#c96b6b'); splash(pl.x, pl.y - 40, 8, '#5e4a2a', 60); say('brak', 0.8); }
@@ -400,6 +488,109 @@ function finishBusy() {
     pl.growth = 0.05; pl.moist = 0.5; pl.pop = 0.8;
     Snd.dig(); popText(pl.x, pl.y - 50, 'рассада', '#8fe36b');
     splash(pl.x, pl.y + 6, 10, '#4a3520', 60);
+    /* в земле иногда лежит чирик */
+    if (Math.random() < 0.22 && invAdd('chirik')) {
+      G.found++;
+      popText(pl.x, pl.y - 76, '💵 чирик!', '#8fe36b');
+      toast('💵 Нашёл чирик в земле. Петрович за него сгоняет в сельпо', '#8fe36b');
+      say('find'); Snd.pick_();
+    }
+    /* но чаще прихватывает поясницу */
+    if (Math.random() < 0.28) {
+      p.ail.radic = 15;
+      toast('🌀 Радикулит — разогнулся неудачно. Ноги не бегут', '#ff8a5c');
+      say('radic'); Snd.ouch(); G.shake = 0.5;
+    }
+  } else if (k === 'beetles') {
+    const pl = tg;
+    pl.beetles = 0;
+    pl.pop = 0.5;
+    Snd.dig(); say('beetle', 0.7);
+    popText(pl.x, pl.y - 60, 'собрал в банку', '#8fe36b');
+    splash(pl.x, pl.y - 30, 8, '#c9a24a', 60);
+  } else if (k === 'rest') {
+    G.rests++;
+    p.ail.arth = false;
+    p.ail.radic = 0;
+    p.energy = clamp(p.energy + 6, 0, 130);
+    say('rest'); Snd.refill();
+    popText(p.x, p.y - 100, 'ух, полегчало', '#8fe36b');
+    toast('🪑 Посидел, руки отпустило', '#8fe36b');
+  }
+}
+
+/* ---------------- инвентарь ---------------- */
+function invAdd(type) {
+  const inv = G.p.inv;
+  const i = inv.indexOf(null);
+  if (i < 0) return false;
+  inv[i] = type;
+  return true;
+}
+
+function useItem(slot) {
+  const p = G.p, type = p.inv[slot];
+  if (!type) return;
+  const it = ITEMS[type];
+  p.inv[slot] = null;
+
+  if (type === 'lucky') {
+    G.crate += 3;
+    popText(p.x, p.y - 100, '+3 в ящик', '#8fe36b');
+    toast('🍅 Удачный помидор пошёл в ящик за три', '#ffd93d');
+    Snd.crate();
+    if (G.crate >= GOAL && G.phase === 'play') endGame(true);
+  } else if (type === 'chirik') {
+    p.bucket = BUCKET_MAX; p.spray = SPRAY_MAX;
+    p.energy = clamp(p.energy + 18, 0, 130);
+    G.petrovich.wave = 3; G.petrovich.x = rnd(150, 800);
+    toast('💵 Петрович сгонял в сельпо: ведро, купорос и стопка', '#8fe36b');
+    Snd.crate();
+  } else if (type === 'cuke') {
+    p.energy = clamp(p.energy + 22, 0, 130);
+    p.ail.burn = 0; p.drinksRow = 0;
+    popText(p.x, p.y - 100, 'хрум!', '#8fe36b');
+    toast('🥒 Закусил. Изжога отступила', '#8fe36b');
+    Snd.pick_();
+  } else if (type === 'balm') {
+    p.ail.arth = false; p.ail.radic = 0;
+    popText(p.x, p.y - 100, 'растёр', '#8fe36b');
+    toast('🧴 Растёрся — суставы отпустили', '#8fe36b');
+    Snd.refill();
+  } else if (type === 'gloves') {
+    p.gloves = 40;
+    toast('🧤 Верхонки надеты — 40 секунд рвёшь мгновенно', '#8fe36b');
+    Snd.refill();
+  }
+  popText(p.x + 20, p.y - 120, it.icon, '#fff');
+}
+
+/* ---------------- находки на полу ---------------- */
+function updateDrops(dt) {
+  G.dropCd -= dt;
+  if (G.dropCd <= 0 && G.drops.length < 3) {
+    G.dropCd = rnd(16, 28);
+    G.drops.push({
+      x: rnd(120, 780), y: rnd(230, 545),
+      type: pick(FLOOR_ITEMS), t: 0, life: 26
+    });
+  }
+  for (let i = G.drops.length - 1; i >= 0; i--) {
+    const d = G.drops[i];
+    d.t += dt; d.life -= dt;
+    if (d.life <= 0) { G.drops.splice(i, 1); continue; }
+    if (dist(d.x, d.y, G.p.x, G.p.y - 20) < 42) {
+      if (invAdd(d.type)) {
+        G.found++;
+        popText(d.x, d.y - 30, ITEMS[d.type].icon + ' ' + ITEMS[d.type].name, '#8fe36b');
+        Snd.pick_();
+        if (d.type === 'chirik') say('find', 0.8);
+        G.drops.splice(i, 1);
+      } else if (!G.invFullWarn || G.invFullWarn < G.t - 4) {
+        G.invFullWarn = G.t;
+        toast('Карманы полные — пусти что-нибудь в дело (1–4)', '#ffb45c');
+      }
+    }
   }
 }
 
@@ -413,7 +604,7 @@ function doSpray() {
   let n = 0;
   for (const pl of G.plants) {
     if (dist(cx, cy, pl.x, pl.y) > 132 || !pl.alive) continue;
-    pl.infect = 0; pl.immune = 16; pl.wait = 4; n++;
+    pl.infect = 0; pl.mildew = 0; pl.beetles = 0; pl.immune = 16; pl.wait = 4; n++;
     for (let i = 0; i < 14; i++)
       part({ x: pl.x + rnd(-30, 30), y: pl.y - rnd(10, 70), vx: rnd(-24, 24), vy: rnd(-38, -6), g: 30, r: rnd(2, 5), c: '#8fd8ff', life: rnd(0.5, 1), max: 1 });
   }
@@ -430,8 +621,28 @@ function updatePlayer(dt) {
   /* усталость / градус: на жаре выветривается быстрее */
   const heatDrain = Math.max(0, G.temp - 26) * 0.075;
   const moving = (p.vx || p.vy) ? 1 : 0;
-  p.energy -= (0.7 + heatDrain + moving * 0.3 + (p.busy > 0 ? 0.2 : 0)) * dt;
+  const burnK = p.ail.burn > 0 ? 1.7 : 1;          /* изжога жжёт градус */
+  p.energy -= (0.7 + heatDrain + moving * 0.3 + (p.busy > 0 ? 0.2 : 0)) * burnK * dt;
   p.energy = clamp(p.energy, 0, 130);
+
+  /* хвори и верхонки тикают */
+  if (p.ail.radic > 0) {
+    p.ail.radic -= dt;
+    if (p.ail.radic <= 0) toast('🌀 Поясницу отпустило', '#8fe36b');
+  }
+  if (p.ail.burn > 0) {
+    p.ail.burn -= dt;
+    if (p.ail.burn <= 0) toast('🔥 Изжога прошла сама', '#8fe36b');
+  }
+  if (p.gloves > 0) {
+    p.gloves -= dt;
+    if (p.gloves <= 0) toast('🧤 Верхонки сносились', '#c9d6c2');
+  }
+  if (p.ail.arth && Math.random() < dt * 0.35) say('arth', 0.3);
+
+  /* инвентарь: 1–4 */
+  for (let i = 0; i < INV_SIZE; i++)
+    if (pressed('Digit' + (i + 1)) || pressed('Numpad' + (i + 1))) useItem(i);
 
   if (p.energy <= 0 && !p.exhausted) {
     p.exhausted = true;
@@ -513,6 +724,8 @@ function updatePlayer(dt) {
   if (p.exhausted) sp *= 0.42;
   else if (p.energy < 25) sp *= 0.72;
   if (G.temp > 36) sp *= 0.9;
+  if (p.ail.radic > 0) sp *= 0.58;      /* радикулит */
+  if (p.ail.arth) sp *= 0.88;
 
   p.vx = dx * sp; p.vy = dy * sp;
   p.x = clamp(p.x + p.vx * dt, FLOOR_L, FLOOR_R);
@@ -594,8 +807,31 @@ function updatePlants(dt) {
     pl.moist = clamp(pl.moist - (0.0045 + Math.max(0, G.temp - 22) * 0.00055) * dt, 0, 1.2);
     const moistF = pl.moist > 0.25 ? 1 : (pl.moist > 0.05 ? 0.3 : 0.05);
 
+    /* мучнистая роса: сыро и не жарко — куст покрывается налётом */
+    if (pl.immune > 0) pl.mildew = 0;
+    else if (G.hum > 74 && G.temp < 29) pl.mildew = clamp(pl.mildew + 0.02 * dt, 0, 1);
+    else pl.mildew = clamp(pl.mildew - 0.012 * dt, 0, 1);
+
+    /* колорадский жук приходит сам и жуёт листву */
+    pl.beetleT -= dt;
+    if (pl.beetleT <= 0 && pl.beetles <= 0 && pl.growth > 0.35) {
+      pl.beetleT = rnd(45, 110);
+      if (Math.random() < 0.55) {
+        pl.beetles = 0.4;
+        if (Math.random() < 0.4) toast('🐛 Колорадский жук на кусте — собери руками (E) или пшикни', '#ffb45c');
+      }
+    }
+    if (pl.beetles > 0) {
+      if (pl.immune > 0) pl.beetles = 0;
+      else pl.beetles = clamp(pl.beetles + 0.035 * dt, 0, 1);
+    }
+
+    /* вершинная гниль: пересушил — плодам чёрное донце */
+    if (pl.moist < 0.14) pl.dryT += dt; else pl.dryT = Math.max(0, pl.dryT - dt * 2);
+
     /* рост куста */
-    if (pl.growth < 1) pl.growth = clamp(pl.growth + 0.043 * heatF * moistF * dt, 0, 1);
+    const sickK = (1 - pl.mildew * 0.55) * (1 - pl.beetles * 0.7);
+    if (pl.growth < 1) pl.growth = clamp(pl.growth + 0.043 * heatF * moistF * sickK * dt, 0, 1);
 
     /* завязь */
     pl.spawnT -= dt * moistF;
@@ -633,9 +869,10 @@ function updatePlants(dt) {
       const f = pl.fruits[i];
       f.pop = Math.max(0, f.pop - dt * 1.6);
       f.sw += dt;
-      const rate = 0.052 * heatF * moistF;
+      const rate = 0.052 * heatF * moistF * (1 - pl.beetles * 0.8) * (1 - pl.mildew * 0.4);
       f.t += (f.t < 1 ? rate : rate * 0.75) * dt;
       if (pl.infect > 0.3) f.rot = clamp(f.rot + 0.06 * pl.infect * dt, 0, 1);
+      if (pl.dryT > 4) { f.rot = clamp(f.rot + 0.05 * dt, 0, 1); f.blossom = true; }
       if (f.t > 1.15) f.rot = clamp(f.rot + 0.11 * dt, 0, 1);
       if (f.t >= 1.6) {
         pl.fruits.splice(i, 1);
@@ -755,6 +992,23 @@ const EVENTS = [
   {
     txt: '📻 По радио передали прогноз. Соврали, конечно', c: '#c9d6c2',
     go: () => { say(Math.random() < 0.5 ? 'idle' : 'hot'); }
+  },
+  {
+    txt: '🐛 Колорады перебрались с картошки — держись!', c: '#ffb45c',
+    go: () => {
+      const alive = G.plants.filter(q => q.alive);
+      for (let i = 0; i < 3 && alive.length; i++) {
+        const q = pick(alive);
+        q.beetles = Math.max(q.beetles, 0.45);
+      }
+    }
+  },
+  {
+    txt: '🍀 В старых трениках нашёлся чирик!', c: '#8fe36b',
+    go: () => {
+      if (invAdd('chirik')) { G.found++; say('find'); }
+      else toast('…но карманы забиты, чирик выпал обратно', '#ffb45c');
+    }
   }
 ];
 
@@ -783,20 +1037,44 @@ function update(dt) {
   updatePlayer(dt);
   updateParts(dt);
   updateExtras(dt);
+  updateDrops(dt);
   updateEvents(dt);
 
   if (G.left <= 0) endGame(false);
   clearPressed();
 }
 
-/* ---------------- старт / финиш ---------------- */
-const elMenu = document.getElementById('menu');
-const elEnd  = document.getElementById('end');
+/* ---------------- старт / пауза / финиш ---------------- */
+const elMenu  = document.getElementById('menu');
+const elEnd   = document.getElementById('end');
+const elPause = document.getElementById('pause');
+
+const PAUSE_LINES = [
+  'Помидоры без присмотра не разбегутся. Наверное.',
+  'Фитофтора тоже присела передохнуть.',
+  'Коза Зорька ждёт за форточкой. Терпеливо.',
+  'Петрович сказал, что так и знал.',
+  'Градус на паузе не выветривается. Единственная поблажка.'
+];
+
+function togglePause() {
+  if (!G) return;
+  if (G.phase === 'play') {
+    G.phase = 'pause';
+    document.getElementById('pause-line').textContent = pick(PAUSE_LINES);
+    elPause.classList.remove('hidden');
+  } else if (G.phase === 'pause') {
+    G.phase = 'play';
+    elPause.classList.add('hidden');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+}
 
 function startGame() {
   newGame();
   elMenu.classList.add('hidden');
   elEnd.classList.add('hidden');
+  elPause.classList.add('hidden');
   Snd.wake();
   /* иначе пробел/Enter будут жать кнопку, а не работать в игре */
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -825,13 +1103,19 @@ function endGame(won) {
     ['Потеряно', G.lost],
     ['Кустов сгорело', G.died],
     ['Выпито', G.drinks + ' 🥃'],
-    ['Полито', G.watered + ' 💩']
+    ['Полито', G.watered + ' 💩'],
+    ['Перекуров', G.rests + ' 🪑'],
+    ['Находок', G.found + ' 💵']
   ].map(s => '<div>' + s[0] + '<b>' + s[1] + '</b></div>').join('');
+  elPause.classList.add('hidden');
   elEnd.classList.remove('hidden');
 }
 
 document.getElementById('btn-play').addEventListener('click', startGame);
 document.getElementById('btn-again').addEventListener('click', startGame);
+document.getElementById('btn-resume').addEventListener('click', togglePause);
+document.getElementById('btn-pause-touch').addEventListener('click', togglePause);
+document.getElementById('btn-restart').addEventListener('click', startGame);
 document.getElementById('btn-menu').addEventListener('click', () => {
   elEnd.classList.add('hidden');
   elMenu.classList.remove('hidden');
