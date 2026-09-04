@@ -94,8 +94,74 @@ const STATIONS = [
   { id: 'vent',   x: 660, y: 182, r: 96, name: 'Форточка', idx: 1 }
 ];
 
+/* ---------------- что мужик приговаривает ---------------- */
+const SAY = {
+  idle: [
+    'Зато своё', 'Зато не магазинное', 'Эх, помидоры-помидорчики…',
+    'Магазинный — он же ватный', 'Это тебе не турецкий', 'Свой, с грядки, с любовью',
+    'В нём витамин, а не химия', 'Тут тебе не Тенерифе', 'Земля — она труд любит',
+    'У Петровича хуже растут', 'Хозяйство требует присутствия',
+    'Соседи спрашивают секрет. А секрет — в бочке'
+  ],
+  water: [
+    'Кушай, родимый', 'На натуральном — оно вкуснее', 'Не морщься, оно полезное',
+    'Вот тебе витаминка', 'Экологически чистое, между прочим',
+    'Пахнет? Значит, настоящее', 'Химией не травим, у нас всё своё'
+  ],
+  harvest: [
+    'Вот это боец!', 'Красавец, в салат пойдёшь', 'Тяжёленький, зараза',
+    'Такой в магазине не купишь', 'Мясистый! Не то что резиновые',
+    'Тёща обзавидуется', 'Один такой — и уже обед'
+  ],
+  vodka: [
+    'За урожай!', 'Не пьянства ради, а тонуса для', 'Первая пошла',
+    'Между первой и второй — грядка', 'Врач сказал — для сосудов',
+    'Огурца бы… ну ладно', 'Ну, помидоры, будем!'
+  ],
+  hot: [
+    'Ну и парилка', 'В Африке и то прохладнее', 'Сорок в тени, а тут все сто',
+    'Голова печётся, как бульба', 'Я тут скоро сам законсервируюсь',
+    'Лысина — это солнечная панель'
+  ],
+  sick: [
+    'Фитофтора, зараза!', 'Опять с картошки нанесло', 'Петрович, картошку убери!',
+    'Не отдам! Она моя!', 'Химия против химии', 'Вот она, вражина, пятнами пошла'
+  ],
+  spray: [
+    'Пшикнем, для здоровья', 'Дыши, родная, лечим', 'Медный купорос — наше всё',
+    'Дед так делал, и я так делаю'
+  ],
+  low: [
+    'Что-то ноги не идут…', 'Надо бы… для тонуса', 'В горле пересохло, беда',
+    'Организм требует', 'Без градуса работа не идёт'
+  ],
+  dead: [
+    'Отвоевался, бедолага', 'Земля тебе пухом, куст', 'А ведь я в него верил',
+    'Ничего, посадим нового'
+  ],
+  crate: [
+    'Ящик — не резиновый', 'Вот это я понимаю — урожай', 'На зиму закатаем',
+    'Тёще покажу — пусть молчит'
+  ],
+  brak: [
+    'Это свиньям', 'Ну куда ж ты гнилой', 'Обидно, слушай',
+    'Половину черви, половину фитофтора'
+  ],
+  drunk: [
+    'Я трезв как стёклышко!', 'Грядка… она… вон там', 'Помидор, стой ровно!',
+    'Эт-та не я шатаюсь, эт-та парник'
+  ]
+};
+
 /* ---------------- состояние ---------------- */
 let G = null;
+
+function say(kind, chance) {
+  if (!G || (chance !== undefined && Math.random() > chance)) return;
+  const pool = SAY[kind] || SAY.idle;
+  G.p.say = { txt: pick(pool), life: 2.9 };
+  G.p.sayCd = rnd(7, 13);
+}
 
 function makePlant(x, y, i) {
   return {
@@ -123,8 +189,14 @@ function newGame() {
       energy: 70, exhausted: false, wobble: 0,
       hands: 0, bucket: BUCKET_MAX, spray: SPRAY_MAX,
       busy: 0, busyMax: 0, busyKind: '', busyTarget: null,
-      swig: 0, hic: 0, sweat: 0, spillT: 1
-    }
+      swig: 0, hic: 0, sweat: 0, spillT: 1,
+      say: { txt: '', life: 0 }, sayCd: 4
+    },
+    /* колхозная массовка */
+    hen: { x: 420, y: 470, tx: 420, ty: 470, t: 0, peck: 0, face: 1, cd: rnd(4, 9), panic: 0 },
+    goat: { t: 0, vent: 0, chew: 0 },
+    tractor: { x: -260, cd: rnd(18, 34) },
+    petrovich: { wave: 0, cd: rnd(8, 18), x: 150 }
   };
   for (let i = 0; i < 8; i++)
     G.flies.push({ a: rnd(0, 6.3), sp: rnd(1.6, 3.6), r: rnd(10, 30), hx: 884, hy: 250, ph: rnd(0, 6.3) });
@@ -282,12 +354,13 @@ function finishBusy() {
     p.hic = 1.6; p.swig = 0.6;
     Snd.glug();
     popText(p.x, p.y - 96, 'Хорошо пошла!', '#ffd93d');
+    say(p.energy > 100 ? 'drunk' : 'vodka');
     if (p.exhausted) { p.exhausted = false; toast('💪 Ноги пошли! Градус вернулся', '#8fe36b'); }
     if (p.energy > 105) toast('🥴 Перебор — держи равновесие', '#ffb45c');
   } else if (k === 'crate') {
     G.crate += p.hands;
     popText(66, 340, '+' + p.hands + ' в ящик', '#8fe36b');
-    Snd.crate();
+    Snd.crate(); say('crate', 0.8);
     for (let i = 0; i < p.hands * 3; i++) splash(66, 366, 1, '#d1341f', 60);
     p.hands = 0;
     if (G.crate >= GOAL && G.phase === 'play') endGame(true);
@@ -303,6 +376,7 @@ function finishBusy() {
     for (let i = 0; i < 16; i++)
       part({ x: pl.x + rnd(-16, 16), y: pl.y - 40, vx: rnd(-16, 16), vy: rnd(20, 90), g: 340, r: rnd(2, 4.2), c: pick(['#6b4a1f', '#7d5a26', '#54391a']), life: rnd(0.3, 0.55), max: 0.55 });
     popText(pl.x, pl.y - 70, 'плюх', '#a0763a');
+    say('water', 0.45);
   } else if (k === 'harvest') {
     const pl = tg;
     let good = 0, brak = 0;
@@ -316,8 +390,8 @@ function finishBusy() {
     }
     p.hands += good;
     pl.pop = 0.6;
-    if (good) { Snd.pick_(); popText(pl.x, pl.y - 66, '+' + good + ' 🍅', '#8fe36b'); }
-    if (brak) { Snd.bad(); popText(pl.x + 14, pl.y - 86, 'брак ×' + brak, '#c96b6b'); splash(pl.x, pl.y - 40, 8, '#5e4a2a', 60); }
+    if (good) { Snd.pick_(); popText(pl.x, pl.y - 66, '+' + good + ' 🍅', '#8fe36b'); say('harvest', 0.55); }
+    if (brak) { Snd.bad(); popText(pl.x + 14, pl.y - 86, 'брак ×' + brak, '#c96b6b'); splash(pl.x, pl.y - 40, 8, '#5e4a2a', 60); say('brak', 0.8); }
     if (!good && !brak) toast('Нечего рвать', '#c9d6c2');
     if (p.hands >= HANDS_MAX) toast('Руки полные (' + HANDS_MAX + ') — в ящик!', '#ffb45c');
   } else if (k === 'replant') {
@@ -345,7 +419,7 @@ function doSpray() {
   }
   if (!n) { toast('Мимо — подойди к кусту', '#c9d6c2'); return; }
   p.spray--; G.sprayed++;
-  Snd.spray();
+  Snd.spray(); say('spray', 0.6);
   popText(cx, cy - 80, 'пшш! ×' + n, '#7ec8ff');
 }
 
@@ -368,6 +442,17 @@ function updatePlayer(dt) {
 
   if (p.energy < 24 && p.energy > 0 && Math.random() < dt * 0.9)
     popText(p.x + rnd(-12, 12), p.y - 100, pick(['надо бы...', 'в горле сухо', 'ох...']), '#ffb45c');
+
+  /* приговаривает по ситуации */
+  p.say.life -= dt;
+  p.sayCd -= dt;
+  if (p.sayCd <= 0 && p.say.life <= 0) {
+    if (p.energy > 100) say('drunk');
+    else if (p.energy < 28) say('low');
+    else if (G.temp > 34) say('hot');
+    else if (G.plants.some(q => q.alive && q.infect > 0.4)) say('sick');
+    else say('idle');
+  }
 
   /* перебор: пошатывает и можно расплескать */
   p.wobble = p.energy > 96 ? (p.energy - 96) / 34 : 0;
@@ -539,7 +624,7 @@ function updatePlants(dt) {
         pl.fruits.length = 0;
         splash(pl.x, pl.y - 30, 18, '#3d2f16', 90);
         toast('☠️ Куст сгорел от фитофторы — выдирай и сажай новый', '#ff8a5c');
-        Snd.ouch();
+        Snd.ouch(); say('dead');
       }
     }
 
@@ -577,11 +662,100 @@ function updateParts(dt) {
   for (const f of G.flies) f.a += f.sp * dt;
 }
 
+/* ---------------- колхозная массовка ---------------- */
+function updateExtras(dt) {
+  /* курица бродит по парнику и разгребает грядки */
+  const h = G.hen;
+  h.t += dt; h.cd -= dt;
+  if (h.panic > 0) h.panic -= dt;
+  if (h.cd <= 0) {
+    h.cd = rnd(3, 8);
+    h.tx = rnd(120, 780); h.ty = rnd(230, 540);
+    if (Math.random() < 0.25) { h.peck = 1.4; popText(h.x, h.y - 34, pick(['Ко-ко!', 'Ко-ко-ко', 'Куд-кудах!']), '#fff'); }
+  }
+  const hd = dist(h.x, h.y, h.tx, h.ty);
+  if (hd > 6) {
+    const sp = (h.panic > 0 ? 190 : 46) * dt;
+    h.face = h.tx > h.x ? 1 : -1;
+    h.x += (h.tx - h.x) / hd * sp;
+    h.y += (h.ty - h.y) / hd * sp;
+  }
+  h.peck = Math.max(0, h.peck - dt);
+  /* курицу пугает подошедший хозяин */
+  if (dist(h.x, h.y, G.p.x, G.p.y) < 70 && h.panic <= 0) {
+    h.panic = 1.4; h.cd = 0.1;
+    h.tx = clamp(h.x + (h.x - G.p.x) * 3, 120, 800);
+    h.ty = clamp(h.y + (h.y - G.p.y) * 3, 230, 540);
+  }
+
+  /* коза Зорька в форточке */
+  if (G.goat.t > 0) { G.goat.t -= dt; G.goat.chew += dt; }
+
+  /* трактор Петровича проезжает по полю */
+  const tr = G.tractor;
+  if (tr.x > -250) {
+    tr.x += 62 * dt;
+    if (Math.random() < dt * 3) part({ x: tr.x + 6, y: 152, vx: rnd(-6, 6), vy: -22, g: -6, r: rnd(3, 7), c: 'rgba(60,60,60,.5)', life: 1.4, max: 1.4 });
+    if (tr.x > W + 260) { tr.x = -260; tr.cd = rnd(30, 55); }
+  } else {
+    tr.cd -= dt;
+    if (tr.cd <= 0) { tr.x = -249; Snd.blip(140, 0.35, 'square', 0.04, 110); }
+  }
+
+  /* сам Петрович машет из-за стекла */
+  const pv = G.petrovich;
+  pv.cd -= dt;
+  if (pv.wave > 0) pv.wave -= dt;
+  else if (pv.cd <= 0) {
+    pv.cd = rnd(14, 26); pv.wave = 3;
+    pv.x = rnd(120, 820);
+    toast(pick([
+      '👋 Петрович из-за стекла: «Ну как, взошли?»',
+      '👋 Петрович: «У меня в этом годе кабачок — во!»',
+      '👋 Петрович: «Дай закурить!»',
+      '👋 Петрович: «А я говорил — надо было в мае сажать»'
+    ]), '#c9d6c2');
+  }
+}
+
 const EVENTS = [
   { txt: '☀️ Солнце вошло в раж — печёт!', c: '#ffb45c', go: () => { G.tempBoost = 7.5; G.boostT = 22; } },
   { txt: '🌧️ Дождь по крыше — влажность полезла вверх', c: '#7ec8ff', go: () => { G.hum = clamp(G.hum + 22, 20, 100); } },
   { txt: '🥔 Сосед копает картошку — споры полетели!', c: '#c96b6b', go: () => { for (let i = 0; i < 16; i++) spawnSpore('air'); } },
-  { txt: '💨 Сквозняк с поля — подсушило', c: '#8fe36b', go: () => { G.hum = clamp(G.hum - 16, 20, 100); G.tempBoost = -5; G.boostT = 16; } }
+  { txt: '💨 Сквозняк с поля — подсушило', c: '#8fe36b', go: () => { G.hum = clamp(G.hum - 16, 20, 100); G.tempBoost = -5; G.boostT = 16; } },
+  {
+    txt: '🐐 Коза Зорька лезет в форточку!', c: '#ffd93d',
+    go: () => {
+      const open = [0, 1].filter(i => G.vents[i]);
+      if (!open.length) { toast('🐐 Коза Зорька подёргала форточки и ушла — закрыто', '#8fe36b'); return; }
+      const v = pick(open);
+      G.goat.t = 5; G.goat.vent = v; G.goat.chew = 0;
+      const vx = STATIONS.filter(s => s.id === 'vent')[v].x;
+      const near = G.plants.filter(q => q.alive && q.fruits.length)
+        .sort((a, b) => Math.abs(a.x - vx) - Math.abs(b.x - vx))[0];
+      if (near) {
+        const f = near.fruits.sort((a, b) => b.t - a.t)[0];
+        near.fruits.splice(near.fruits.indexOf(f), 1);
+        G.lost++;
+        splash(near.x + f.dx, near.y + f.dy, 10, '#d64027', 70);
+        popText(near.x, near.y - 60, 'схрумкала!', '#ffd93d');
+        toast('🐐 Зорька сожрала помидор через форточку. Зато своё — теперь в козе', '#ffb45c');
+      }
+    }
+  },
+  {
+    txt: '🐔 Курица прорвалась в парник и разгребает грядку!', c: '#ffb45c',
+    go: () => {
+      const q = pick(G.plants.filter(p => p.alive)) || G.plants[0];
+      G.hen.x = q.x; G.hen.y = q.y + 20; G.hen.peck = 2.5; G.hen.cd = 2;
+      q.moist = clamp(q.moist - 0.3, 0, 1.2);
+      splash(q.x, q.y + 10, 14, '#5b4630', 70);
+    }
+  },
+  {
+    txt: '📻 По радио передали прогноз. Соврали, конечно', c: '#c9d6c2',
+    go: () => { say(Math.random() < 0.5 ? 'idle' : 'hot'); }
+  }
 ];
 
 function updateEvents(dt) {
@@ -608,6 +782,7 @@ function update(dt) {
   updateSpores(dt);
   updatePlayer(dt);
   updateParts(dt);
+  updateExtras(dt);
   updateEvents(dt);
 
   if (G.left <= 0) endGame(false);
@@ -633,11 +808,11 @@ function endGame(won) {
   won ? Snd.win() : Snd.lose();
 
   const ranks = [
-    [GOAL,      '🏆 Пан агроном! Ящик полный, фитофтора посрамлена, градус выдержан.'],
-    [GOAL * 0.7,'👍 Крепкий хозяин. На рынке в Ждановичах тебя бы уважали.'],
-    [GOAL * 0.4,'😐 На салат хватит. На зиму — уже вопрос.'],
-    [1,         '😬 Пару штук есть. Остальное съела фитофтора и жажда.'],
-    [0,         '💀 Пустой ящик. Зато градус держал ровно.']
+    [GOAL,      '🏆 Пан агроном! Ящик полный, фитофтора посрамлена, градус выдержан. Петрович молча закрыл форточку и ушёл.'],
+    [GOAL * 0.7,'👍 Крепкий хозяин. На рынке в Ждановичах за такие дали бы цену. Зато своё, зато не магазинное.'],
+    [GOAL * 0.4,'😐 На салат хватит, на зиму — уже разговор. Три банки, и те тёще.'],
+    [1,         '😬 Пару штук есть. Остальное поделили фитофтора, коза и жажда.'],
+    [0,         '💀 Пустой ящик. Зато градус держал ровно и с козой подружился.']
   ];
   const r = ranks.find(r => G.crate >= r[0]) || ranks[ranks.length - 1];
 

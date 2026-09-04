@@ -82,7 +82,9 @@ function drawGreenhouse() {
   ctx.fillStyle = '#aab5a2'; ctx.fillRect(0, 194, W, 14);
   ctx.fillStyle = '#b9c3b1'; ctx.fillRect(0, 34, 14, 166); ctx.fillRect(W - 14, 34, 14, 166);
 
+  if (G) { drawTractor(); drawPetrovich(); }
   drawVents();
+  if (G && G.goat.t > 0) drawGoat();
 
   /* пол парника */
   const gr = ctx.createLinearGradient(0, 200, 0, 600);
@@ -114,6 +116,145 @@ function drawGreenhouse() {
     ctx.moveTo(off, 200); ctx.lineTo(off + 90, 200);
     ctx.lineTo(off + 240, 600); ctx.lineTo(off + 110, 600);
     ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* трактор «Беларус» ползёт по соседскому полю */
+function drawTractor() {
+  const tr = G.tractor;
+  if (tr.x <= -250) return;
+  ctx.save();
+  ctx.translate(tr.x, 172);
+  ctx.fillStyle = '#2f6fae'; rr(-26, -22, 40, 18, 4); ctx.fill();
+  ctx.fillStyle = '#2f6fae'; rr(-4, -34, 20, 16, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(210,240,255,.8)'; rr(0, -31, 13, 10, 2); ctx.fill();
+  ctx.fillStyle = '#4a4a4a'; ctx.fillRect(-20, -40, 5, 18);
+  ctx.fillStyle = '#22262a';
+  ctx.beginPath(); ctx.arc(10, -2, 10, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(-18, 0, 6, 0, 7); ctx.fill();
+  ctx.fillStyle = '#9aa3ab';
+  ctx.beginPath(); ctx.arc(10, -2, 4, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+/* сосед Петрович машет из-за стекла */
+function drawPetrovich() {
+  const pv = G.petrovich;
+  if (pv.wave <= 0) return;
+  ctx.save();
+  ctx.translate(pv.x, 176);
+  ctx.fillStyle = '#6b5f4c'; rr(-7, -18, 14, 20, 5); ctx.fill();
+  ctx.fillStyle = '#d9b48d'; ctx.beginPath(); ctx.arc(0, -24, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#4f6b34'; rr(-9, -30, 18, 6, 3); ctx.fill();   /* кепка */
+  ctx.strokeStyle = '#d9b48d'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(6, -14);
+  ctx.lineTo(14, -26 + Math.sin(G.t * 12) * 6); ctx.stroke();
+  ctx.restore();
+}
+
+/* коза Зорька в форточке */
+function drawGoat() {
+  const v = STATIONS.filter(s => s.id === 'vent')[G.goat.vent];
+  const chew = Math.sin(G.goat.chew * 12) * 2;
+  ctx.save();
+  ctx.translate(v.x + 6, 150);
+  ctx.fillStyle = '#e6e1d6';
+  ctx.beginPath(); ctx.ellipse(0, 0, 15, 12, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(10, 6 + chew * 0.4, 11, 8, 0.3, 0, 7); ctx.fill();  /* морда */
+  ctx.fillStyle = '#cfc7b6';
+  ctx.beginPath(); ctx.ellipse(-12, 4, 7, 4, 0.6, 0, 7); ctx.fill();               /* ухо */
+  ctx.strokeStyle = '#9a8f78'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-6, -10); ctx.quadraticCurveTo(-12, -22, -4, -24); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(2, -11); ctx.quadraticCurveTo(-3, -23, 5, -25); ctx.stroke();
+  ctx.fillStyle = '#2a2620';
+  ctx.beginPath(); ctx.arc(6, -1, 2, 0, 7); ctx.fill();
+  ctx.fillStyle = '#7d7365';
+  ctx.beginPath(); ctx.ellipse(14, 10 + chew * 0.5, 5, 3, 0.3, 0, 7); ctx.fill();  /* бородка жуёт */
+  txt('мее', 26, -18, 14, '#ffd93d', 'left', 900);
+  ctx.restore();
+}
+
+/* курица бродит по парнику */
+function drawHen() {
+  const h = G.hen;
+  const step = Math.sin(h.t * (h.panic > 0 ? 22 : 7)) * (dist(h.x, h.y, h.tx, h.ty) > 6 ? 1 : 0);
+  const peck = h.peck > 0 ? Math.abs(Math.sin(h.peck * 9)) * 0.7 : 0;
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 14, 5, 0, 0, 7); ctx.fill();
+  ctx.scale(h.face, 1);
+  ctx.strokeStyle = '#e0a33c'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-2, -6); ctx.lineTo(-4 + step * 3, 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(3, -6); ctx.lineTo(5 - step * 3, 2); ctx.stroke();
+  ctx.fillStyle = '#f2efe6';
+  ctx.beginPath(); ctx.ellipse(0, -14, 15, 11, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e2ddd0';
+  ctx.beginPath(); ctx.ellipse(-9, -16, 8, 6, -0.3, 0, 7); ctx.fill();
+  ctx.save();
+  ctx.translate(9, -22); ctx.rotate(peck);
+  ctx.fillStyle = '#f2efe6';
+  ctx.beginPath(); ctx.arc(2, -2, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#d94a3d';
+  ctx.beginPath(); ctx.ellipse(1, -9, 4, 3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e0a33c';
+  ctx.beginPath(); ctx.moveTo(8, -2); ctx.lineTo(14, 0); ctx.lineTo(8, 2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#2a2620';
+  ctx.beginPath(); ctx.arc(4, -3, 1.6, 0, 7); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+}
+
+/* колхозный реквизит по углам */
+function drawDecor() {
+  /* покрышка с цветами */
+  ctx.save(); ctx.translate(66, 250);
+  ctx.fillStyle = '#22242a';
+  ctx.beginPath(); ctx.ellipse(0, 0, 30, 15, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#4a3626';
+  ctx.beginPath(); ctx.ellipse(0, 0, 20, 9, 0, 0, 7); ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.4 + 0.3;
+    ctx.fillStyle = ['#e8556d', '#ffd93d', '#e88ac0'][i % 3];
+    ctx.beginPath(); ctx.arc(Math.cos(a) * 12, Math.sin(a) * 5 - 6, 4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffef9f';
+    ctx.beginPath(); ctx.arc(Math.cos(a) * 12, Math.sin(a) * 5 - 6, 1.6, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+
+  /* старая ванна с водой */
+  ctx.save(); ctx.translate(66, 512);
+  ctx.fillStyle = '#d8dbd6'; rr(-40, -18, 80, 34, 14); ctx.fill();
+  ctx.fillStyle = '#5f8ba0'; rr(-34, -13, 68, 22, 10); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.beginPath(); ctx.ellipse(-12 + Math.sin(G.t) * 4, -6, 12, 3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#b9beb8'; ctx.fillRect(-36, 14, 7, 8); ctx.fillRect(29, 14, 7, 8);
+  ctx.restore();
+
+  /* батарея банок под закрутку */
+  ctx.save(); ctx.translate(190, 578);
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = 'rgba(200,225,210,.75)';
+    rr(i * 17, -22, 13, 22, 3); ctx.fill();
+    ctx.fillStyle = '#c9a24a'; rr(i * 17, -24, 13, 4, 2); ctx.fill();
+    if (i % 2) { ctx.fillStyle = 'rgba(190,60,40,.6)'; rr(i * 17 + 2, -14, 9, 12, 2); ctx.fill(); }
+  }
+  ctx.restore();
+
+  /* приёмник на табуретке */
+  ctx.save(); ctx.translate(742, 580);
+  ctx.fillStyle = '#7c6a52'; rr(-16, -6, 32, 6, 2); ctx.fill();
+  ctx.fillStyle = '#8a6a3f'; rr(-14, -24, 28, 18, 3); ctx.fill();
+  ctx.fillStyle = '#3e3125'; rr(-11, -21, 12, 12, 2); ctx.fill();
+  ctx.fillStyle = '#d9c33a'; ctx.beginPath(); ctx.arc(6, -15, 3, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#9aa3ab'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(10, -24); ctx.lineTo(16, -40); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 2;
+  for (let i = 1; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.arc(16, -40, 6 * i + Math.sin(G.t * 3) * 1.5, -2.4, -0.7);
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -393,25 +534,25 @@ function drawFarmer() {
   /* ноги: треники с лампасами + кирзачи */
   for (const s of [-1, 1]) {
     ctx.save();
-    ctx.translate(s * 9, -34);
+    ctx.translate(s * 8, -36);
     ctx.rotate(legA * s * 0.8);
-    ctx.fillStyle = '#5c6470'; rr(-9, 0, 18, 30, 6); ctx.fill();
-    ctx.fillStyle = '#8d96a3'; ctx.fillRect(-8 + (s > 0 ? 12 : 0), 2, 3, 26);
-    ctx.fillStyle = '#2b241c'; rr(-10, 26, 21, 12, 4); ctx.fill();
+    ctx.fillStyle = '#5c6470'; rr(-8, 0, 16, 32, 6); ctx.fill();
+    ctx.fillStyle = '#8d96a3'; ctx.fillRect(-7 + (s > 0 ? 11 : 0), 2, 3, 28);
+    ctx.fillStyle = '#2b241c'; rr(-9, 28, 19, 11, 4); ctx.fill();
     ctx.restore();
   }
 
   ctx.rotate(bend);
 
-  /* торс: майка-алкоголичка на пузе */
-  ctx.fillStyle = '#c9a07a';                    /* загорелое пузо */
-  rr(-22, -70, 44, 40, 16); ctx.fill();
+  /* торс: майка-алкоголичка, пузо ещё не запущенное */
+  ctx.fillStyle = '#c9a07a';
+  rr(-19, -70, 38, 36, 13); ctx.fill();
   ctx.fillStyle = '#dfe7ef';                    /* майка */
-  rr(-23, -74, 46, 28, 12); ctx.fill();
+  rr(-20, -76, 40, 30, 11); ctx.fill();
   ctx.fillStyle = '#c6d2dd';
-  rr(-23, -74, 46, 8, 6); ctx.fill();
+  rr(-20, -76, 40, 8, 6); ctx.fill();
   ctx.fillStyle = '#dfe7ef';
-  rr(-19, -84, 8, 14, 4); ctx.fill(); rr(11, -84, 8, 14, 4); ctx.fill();
+  rr(-17, -86, 7, 14, 4); ctx.fill(); rr(10, -86, 7, 14, 4); ctx.fill();
   /* пятна пота на майке */
   if (hot > 0.2) {
     ctx.fillStyle = 'rgba(150,175,195,' + (0.25 + hot * 0.4) + ')';
@@ -422,18 +563,18 @@ function drawFarmer() {
   /* руки */
   const armSwing = legA * 0.6;
   const skin = lerpColorHex('#c9a07a', '#d9694f', hot * 0.6);
-  ctx.strokeStyle = skin; ctx.lineWidth = 9; ctx.lineCap = 'round';
+  ctx.strokeStyle = skin; ctx.lineWidth = 8; ctx.lineCap = 'round';
   /* дальняя рука */
-  ctx.beginPath(); ctx.moveTo(-16, -74);
-  ctx.lineTo(-24 - armSwing * 8, -48); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-14, -76);
+  ctx.lineTo(-23 - armSwing * 8, -48); ctx.stroke();
   /* ближняя рука зависит от занятия */
   let hx = 26, hy = -50;
   if (p.busyKind === 'water')   { hx = 30; hy = -62; }
   if (p.busyKind === 'harvest') { hx = 34; hy = -58; }
   if (p.busyKind === 'vodka' || p.swig > 0) { hx = 10; hy = -96; }
   if (p.busyKind === 'kupor')   { hx = 28 + Math.sin(G.t * 14) * 6; hy = -58; }
-  ctx.beginPath(); ctx.moveTo(16, -74);
-  ctx.quadraticCurveTo(24, -64, hx, hy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14, -76);
+  ctx.quadraticCurveTo(23, -64, hx, hy); ctx.stroke();
 
   /* инвентарь в руке */
   if (p.busyKind !== 'vodka' && p.swig <= 0) drawBucket(hx, hy, p);
@@ -459,29 +600,32 @@ function drawFarmer() {
   const face = lerpColorHex('#d9b48d', '#e0715a', Math.max(hot * 0.75, clamp((p.energy - 95) / 35, 0, 1) * 0.8));
   /* уши */
   ctx.fillStyle = face;
-  ctx.beginPath(); ctx.arc(-17, 2, 5, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(17, 2, 5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(-16, 2, 4.6, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(16, 2, 4.6, 0, 7); ctx.fill();
   /* лысый череп */
-  ctx.beginPath(); ctx.ellipse(0, 0, 18, 20, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, 17, 19, 0, 0, 7); ctx.fill();
   /* блик на лысине */
   ctx.fillStyle = 'rgba(255,255,255,.45)';
   ctx.beginPath(); ctx.ellipse(-6, -11, 6.5, 4, -0.5, 0, 7); ctx.fill();
-  /* остатки шевелюры по бокам */
-  ctx.fillStyle = '#8a8378';
-  ctx.beginPath(); ctx.ellipse(-15, 4, 5, 7, 0.4, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(15, 4, 5, 7, -0.4, 0, 7); ctx.fill();
+  /* щетина по челюсти — молодой ещё, седеть рано */
+  ctx.fillStyle = 'rgba(70,58,46,.30)';
+  ctx.beginPath(); ctx.ellipse(0, 11, 13, 8, 0, 0, 7); ctx.fill();
+  /* тёмные остатки шевелюры по бокам */
+  ctx.fillStyle = '#4b4239';
+  ctx.beginPath(); ctx.ellipse(-14.5, 4, 4.2, 6, 0.4, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(14.5, 4, 4.2, 6, -0.4, 0, 7); ctx.fill();
   /* брови и глаза */
-  ctx.fillStyle = '#5b5348';
-  ctx.fillRect(2, -7, 11, 3); ctx.fillRect(-12, -7, 9, 3);
+  ctx.fillStyle = '#4a4038';
+  ctx.fillRect(2, -7, 10, 3); ctx.fillRect(-11, -7, 8, 3);
   ctx.fillStyle = '#26201a';
   if (p.exhausted) { ctx.fillRect(3, -1, 9, 2); ctx.fillRect(-11, -1, 8, 2); }
   else { ctx.beginPath(); ctx.arc(7, 0, 2.4, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(-7, 0, 2.4, 0, 7); ctx.fill(); }
   /* нос картошкой */
   ctx.fillStyle = lerpColorHex('#c98f6a', '#c8503e', clamp(hot * 0.5 + (p.energy - 90) / 60, 0, 1));
-  ctx.beginPath(); ctx.ellipse(4, 6, 6, 5, 0.2, 0, 7); ctx.fill();
-  /* усы */
-  ctx.fillStyle = '#6b6156';
-  ctx.beginPath(); ctx.ellipse(0, 12, 12, 4, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(3.5, 5.5, 5.2, 4.4, 0.2, 0, 7); ctx.fill();
+  /* усы, но уже не дедовские */
+  ctx.fillStyle = '#4f4438';
+  ctx.beginPath(); ctx.ellipse(1, 12, 9.5, 3, 0, 0, 7); ctx.fill();
   /* рот */
   ctx.fillStyle = '#3a2a22';
   if (drink) { ctx.beginPath(); ctx.arc(2, 17, 3.4, 0, 7); ctx.fill(); }
@@ -606,6 +750,48 @@ function bar(x, y, w, h, v, col, bg) {
   ctx.fillStyle = col; rr(x, y, Math.max(h, w * clamp(v, 0, 1)), h, h / 2); ctx.fill();
 }
 
+/* облачко с репликой над головой */
+function drawBubble(px, py, text, alpha) {
+  ctx.font = F(16, 700);
+  const maxW = 230;
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+
+  const wdt = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width))) + 26;
+  const hgt = lines.length * 20 + 16;
+  const bx = clamp(px - wdt / 2, 8, W - wdt - 8);
+  const by = py - hgt;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(250,252,244,.96)';
+  ctx.strokeStyle = 'rgba(40,60,35,.55)';
+  ctx.lineWidth = 2;
+  rr(bx, by, wdt, hgt, 12); ctx.fill(); ctx.stroke();
+  /* хвостик к хозяину */
+  const tipX = clamp(px, bx + 18, bx + wdt - 18);
+  ctx.beginPath();
+  ctx.moveTo(tipX - 8, by + hgt - 1);
+  ctx.lineTo(tipX + 2, by + hgt + 13);
+  ctx.lineTo(tipX + 8, by + hgt - 1);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(250,252,244,.96)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(40,60,35,.55)';
+  ctx.beginPath();
+  ctx.moveTo(tipX - 8, by + hgt - 1); ctx.lineTo(tipX + 2, by + hgt + 13);
+  ctx.lineTo(tipX + 8, by + hgt - 1); ctx.stroke();
+
+  lines.forEach((l, i) => txt(l, bx + wdt / 2, by + 18 + i * 20, 16, '#25301f', 'center', 700));
+  ctx.restore();
+}
+
 function drawHUD() {
   const p = G.p;
 
@@ -656,6 +842,9 @@ function drawHUD() {
   ctx.restore();
   if (p.energy < 25) shadowText('ГРАДУС!', 894, 34, 13, '#ff8a5c', 'center', 900);
   else if (p.energy > 100) shadowText('перебор', 894, 34, 13, '#c07ae0', 'center', 900);
+
+  /* что мужик приговаривает */
+  if (p.say.life > 0) drawBubble(p.x, clamp(p.y - 176, 62, H), p.say.txt, clamp(p.say.life / 0.5, 0, 1));
 
   /* подсказка действия */
   const tg = nearestTarget();
@@ -708,14 +897,13 @@ function render() {
 
   drawGreenhouse();
   if (G) {
+    drawDecor();
     drawStations();
-    const order = G.plants.slice().sort((a, b) => a.y - b.y);
-    let drawn = false;
-    for (const pl of order) {
-      if (!drawn && G.p.y < pl.y - 6) { drawFarmer(); drawn = true; }
-      drawPlant(pl);
-    }
-    if (!drawn) drawFarmer();
+    const ents = G.plants.map(pl => ({ y: pl.y, f: () => drawPlant(pl) }));
+    ents.push({ y: G.p.y + 4, f: drawFarmer });
+    ents.push({ y: G.hen.y, f: drawHen });
+    ents.sort((a, b) => a.y - b.y);
+    for (const e of ents) e.f();
     drawSporesAndParts();
     drawHeat();
   }
